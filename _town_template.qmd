@@ -1,0 +1,271 @@
+# {{town_name}}
+
+```{r}
+#| label: process-age-{{town_name}}
+#| include: false
+
+# 1. Define the variables and give them readable names
+age_vars <- c(
+  "0 to 4"   = "S0101_C01_002",
+  "5 to 9"   = "S0101_C01_003",
+  "10 to 14" = "S0101_C01_004",
+  "15 to 19" = "S0101_C01_005",
+  "20 to 24" = "S0101_C01_006",
+  "25 to 29" = "S0101_C01_007",
+  "30 to 34" = "S0101_C01_008",
+  "35 to 39" = "S0101_C01_009",
+  "40 to 44" = "S0101_C01_010",
+  "45 to 49" = "S0101_C01_011",
+  "50 to 54" = "S0101_C01_012",
+  "55 to 59" = "S0101_C01_013",
+  "60 to 64" = "S0101_C01_014",
+  "65 to 69" = "S0101_C01_015",
+  "70 to 74" = "S0101_C01_016",
+  "75 to 79" = "S0101_C01_017",
+  "80 to 84" = "S0101_C01_018",
+  "85+"      = "S0101_C01_019"
+)
+
+# 2. Fetch the data for all of MA, then filter to the specific town
+town_age_raw <- get_acs(
+  geography = "county subdivision",
+  variables = age_vars,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |> 
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+# 3. Roll up into the new, tighter brackets
+town_age_summary <- town_age_raw |> 
+  mutate(
+    Bracket = case_when(
+      variable %in% c("0 to 4", "5 to 9", "10 to 14", "15 to 19") ~ "Under 20 (Youth)",
+      variable %in% c("20 to 24", "25 to 29", "30 to 34") ~ "20 to 34",
+      variable %in% c("35 to 39", "40 to 44", "45 to 49", "50 to 54", "55 to 59", "60 to 64") ~ "35 to 64",
+      TRUE ~ "65+ (Older Adults)"
+    ),
+    Bracket = factor(Bracket, levels = c("Under 20 (Youth)", "20 to 34", "35 to 64", "65+ (Older Adults)"))
+  ) |> 
+  group_by(Bracket) |> 
+  summarize(
+    Estimate = sum(estimate, na.rm = TRUE),
+    MOE = sqrt(sum(moe^2, na.rm = TRUE)) 
+  )
+```
+
+### Age Distribution
+The following chart highlights the age distribution for **{{town_name}}**, breaking out youth and older adult populations.
+
+```{r}
+#| label: plot-age-{{town_name}}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 2
+
+ggplot(town_age_summary, aes(x = Bracket, y = Estimate)) +
+  geom_col(fill = "#2c3e50", width = 0.7) +
+  geom_text(aes(label = scales::comma(Estimate)), vjust = 1.5, size = 3.5, color = "white") +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = paste("Age Demographics:", "{{town_name}}"),
+    x = NULL,
+    y = "Population"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 11),
+    axis.text.x = element_text(size = 10),
+    panel.grid.major.x = element_blank()
+  )
+```
+
+### Language & Proficiency
+
+```{r}
+#| label: process-language-{{town_name}}
+#| include: false
+
+# 1. Limited English Households (S1602)
+lep_vars <- c(
+  "Total Households" = "S1602_C01_001",
+  "LEP Households" = "S1602_C03_001"
+)
+
+town_lep_raw <- get_acs(
+  geography = "county subdivision",
+  variables = lep_vars,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |> 
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+# Calculate total LEP households and percentage
+lep_total <- town_lep_raw |> 
+  filter(variable == "LEP Households") |> 
+  pull(estimate)
+
+hh_total <- town_lep_raw |> 
+  filter(variable == "Total Households") |> 
+  pull(estimate)
+
+lep_percent <- if_else(hh_total > 0, round((lep_total / hh_total) * 100, 1), 0)
+
+# 2. Top 5 Languages (C16001)
+lang_vars <- c(
+  "Spanish" = "C16001_003",
+  "French, Haitian, or Cajun" = "C16001_006",
+  "German or other West Germanic" = "C16001_009",
+  "Russian, Polish, or other Slavic" = "C16001_012",
+  "Other Indo-European" = "C16001_015",
+  "Korean" = "C16001_018",
+  "Chinese (incl. Mandarin, Cantonese)" = "C16001_021",
+  "Vietnamese" = "C16001_024",
+  "Tagalog (incl. Filipino)" = "C16001_027",
+  "Other Asian and Pacific Island" = "C16001_030",
+  "Arabic" = "C16001_033",
+  "Other Languages" = "C16001_036"
+)
+
+town_lang_raw <- get_acs(
+  geography = "county subdivision",
+  variables = lang_vars,
+  state = "MA",
+  year = current_acs_year
+) |> 
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+# Sort and keep the top 5 spoken languages
+top_5_languages <- town_lang_raw |> 
+  arrange(desc(estimate)) |> 
+  filter(estimate > 0) |>  # Exclude languages with zero speakers
+  slice_head(n = 5) 
+```
+
+In **{{town_name}}**, there are **`r scales::comma(lep_total)`** households considered to have Limited English Proficiency (LEP), representing **`r lep_percent`%** of total households. 
+
+The top languages spoken at home (other than English) are:
+
+```{r}
+#| label: table-lang-{{town_name}}
+#| echo: false
+
+# Generate a simple, clean table for the Word doc
+top_5_languages |> 
+  select(Language = variable, Estimate = estimate) |> 
+  gt() |> 
+  cols_label(
+    Language = md("**Language**"),
+    Estimate = md("**Estimated Speakers**")
+  ) |> 
+  fmt_number(
+    columns = Estimate,
+    decimals = 0,
+    use_seps = TRUE # Ensures numbers like 1200 render as 1,200
+  ) |> 
+  cols_align(
+    align = "left",
+    columns = Language
+  ) |> 
+  cols_align(
+    align = "right",
+    columns = Estimate
+  ) |> 
+  opt_stylize(style = 1, color = "gray") |> 
+  tab_options(table.align = "left")
+```
+
+
+### Transportation Profile
+
+```{r}
+#| label: process-transportation-{{town_name}}
+#| include: false
+
+# 1. Vehicles Available (B08201)
+veh_vars <- c(
+ "Total Households" = "B08201_001",
+  "No vehicle" = "B08201_002", 
+ "1 vehicle" = "B08201_003",
+ "2 vehicles" = "B08201_004",
+ "3 vehicles" = "B08201_005", 
+ "4 or more vehicles" = "B08201_006"
+)
+
+town_veh_raw <- get_acs(
+  geography = "county subdivision",
+  variables = veh_vars,
+  state = "MA",
+  year = current_acs_year
+) |> 
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+# Calculate Zero-Vehicle Households
+zero_veh_total <- town_veh_raw |> 
+  filter(variable == "No vehicle") |> 
+  pull(estimate)
+
+total_hh_veh <- town_veh_raw |> 
+  filter(variable == "Total Households") |> 
+  pull(estimate)
+
+zero_veh_percent <- if_else(total_hh_veh > 0, round((zero_veh_total / total_hh_veh) * 100, 1), 0)
+
+# 2. Means of Transportation to Work (B08301)
+transpo_vars <- c(
+  "Total Workers" = "B08301_001",
+  "Drove alone" = "B08301_003", 
+  "Carpooled" ="B08301_004", 
+  "Public transportation" = "B08301_010", 
+  "Taxi or ride-hailing services" = "B08301_016",
+  "Motorcycle" = "B08301_017", 
+  "Bicycle" = "B08301_018", 
+  "Walked" = "B08301_019", 
+  "Other means" = "B08301_020", 
+  "Worked from home" = "B08301_021"
+)
+
+town_transpo_raw <- get_acs(
+  geography = "county subdivision",
+  variables = transpo_vars,
+  state = "MA",
+  year = current_acs_year
+) |> 
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+# Clean up for the chart
+town_transpo_clean <- town_transpo_raw |> 
+  filter(variable != "Total Workers", estimate > 0) |> 
+  mutate(variable = reorder(variable, estimate))
+```
+
+In **{{town_name}}**, there are **`r scales::comma(zero_veh_total)`** households with no vehicles available, which represents **`r zero_veh_percent`%** of all households in the community.
+
+**Means of Transportation to Work**
+
+```{r}
+#| label: plot-transpo-{{town_name}}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 3.5
+
+ggplot(town_transpo_clean, aes(x = estimate, y = variable)) +
+  geom_col(fill = "#d35400", width = 0.7) +
+  geom_text(aes(label = scales::comma(estimate)), hjust = -0.1, size = 3.5) +
+  scale_x_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.2))) +
+  labs(
+    title = paste("Commuting Patterns:", "{{town_name}}"),
+    x = "Number of Workers",
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 11),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+```{=openxml}
+<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+```

@@ -1,0 +1,64 @@
+---
+title: "Town Profiles"
+format: 
+  docx:
+    toc: false
+    fig-dpi: 300
+---
+
+*Data Source: American Community Survey (ACS) 5-Year Estimates*
+
+```{=openxml}
+<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+```
+
+```{r}
+#| label: setup
+#| include: false
+
+
+library(tidyverse)
+library(tidycensus)
+library(knitr)
+library(jsonlite)
+library(gt)
+
+get_latest_acs5_year <- function() {
+  api_catalog <- fromJSON("https://api.census.gov/data.json")$dataset
+  tibble(
+    year = as.numeric(api_catalog$c_vintage),
+    dataset = map_chr(api_catalog$c_dataset, paste, collapse = "-")
+  ) |> 
+    filter(dataset == "acs-acs5") |> 
+    pull(year) |> 
+    max(na.rm = TRUE)
+}
+
+current_acs_year <- get_latest_acs5_year()
+
+```
+
+```{r}
+#| label: generate-reports
+#| output: asis
+#| echo: false
+
+# Define your test towns
+towns <- c("Barre", "Worcester") 
+
+# 1. Expand the template to fill in the {{town_name}} for each town
+src <- lapply(towns, function(current_town) {
+  knitr::knit_expand("_town_template.qmd", town_name = current_town)
+})
+
+# 2. Knit the expanded text so it properly generates and saves the plots
+res <- knitr::knit_child(text = unlist(src), quiet = TRUE)
+
+# 3. 'cat' prints the raw markdown (and plot links) directly into the final document
+cat(res, sep = '\n')
+```
+
+
+
+
+
