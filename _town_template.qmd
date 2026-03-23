@@ -1,10 +1,13 @@
 # {{town_name}}
 
+```{=typst}
+#columns(2, gutter: 4%)[
+```
+
 ```{r}
 #| label: process-age-{{town_name}}
 #| include: false
 
-# 1. Define the variables and give them readable names
 age_vars <- c(
   "0 to 4"   = "S0101_C01_002",
   "5 to 9"   = "S0101_C01_003",
@@ -26,7 +29,6 @@ age_vars <- c(
   "85+"      = "S0101_C01_019"
 )
 
-# 2. Fetch the data for all of MA, then filter to the specific town
 town_age_raw <- get_acs(
   geography = "county subdivision",
   variables = age_vars,
@@ -36,47 +38,66 @@ town_age_raw <- get_acs(
 ) |> 
   filter(str_detect(NAME, "^{{town_name}}"))
 
-# 3. Roll up into the new, tighter brackets
 town_age_summary <- town_age_raw |> 
   mutate(
     Bracket = case_when(
-      variable %in% c("0 to 4", "5 to 9", "10 to 14", "15 to 19") ~ "Under 20 (Youth)",
-      variable %in% c("20 to 24", "25 to 29", "30 to 34") ~ "20 to 34",
+      variable %in% c("0 to 4", "5 to 9", "10 to 14", "15 to 19")                          ~ "Under 20 (Youth)",
+      variable %in% c("20 to 24", "25 to 29", "30 to 34")                                   ~ "20 to 34",
       variable %in% c("35 to 39", "40 to 44", "45 to 49", "50 to 54", "55 to 59", "60 to 64") ~ "35 to 64",
-      TRUE ~ "65+ (Older Adults)"
+      TRUE                                                                                    ~ "65+ (Older Adults)"
     ),
     Bracket = factor(Bracket, levels = c("Under 20 (Youth)", "20 to 34", "35 to 64", "65+ (Older Adults)"))
   ) |> 
   group_by(Bracket) |> 
   summarize(
     Estimate = sum(estimate, na.rm = TRUE),
-    MOE = sqrt(sum(moe^2, na.rm = TRUE)) 
+    MOE = sqrt(sum(moe^2, na.rm = TRUE))
+  ) |>
+  mutate(
+    Share = round((Estimate / sum(Estimate)) * 100, 1)
   )
 ```
+```{r}
+#| label: prose-age-{{town_name}}
+#| include: false
 
+youth_pct <- town_age_summary |>
+  filter(Bracket == "Under 20 (Youth)") |>
+  pull(Share)
+
+older_adult_count <- town_age_summary |>
+  filter(Bracket == "65+ (Older Adults)") |>
+  pull(Estimate)
+
+older_adult_pct <- town_age_summary |>
+  filter(Bracket == "65+ (Older Adults)") |>
+  pull(Share)
+```
+
+####
 ### Age Distribution
-The following chart highlights the age distribution for **{{town_name}}**, breaking out youth and older adult populations.
 
+In **{{town_name}}**, youth under 20 make up **`r youth_pct`%** of the population, while **`r scales::comma(older_adult_count)`** residents (**`r older_adult_pct`%**) are aged 65 or older.
 ```{r}
 #| label: plot-age-{{town_name}}
 #| echo: false
-#| fig-width: 6
-#| fig-height: 2
+#| fig-height: 1.5
 
 ggplot(town_age_summary, aes(x = Bracket, y = Estimate)) +
   geom_col(fill = "#2c3e50", width = 0.7) +
-  geom_text(aes(label = scales::comma(Estimate)), vjust = 1.5, size = 3.5, color = "white") +
-  scale_y_continuous(labels = scales::comma) +
+  geom_text(
+    aes(label = paste0(scales::comma(Estimate), "\n(", Share, "%)")),
+    vjust = -0.3,
+    size = 2.2,
+    lineheight = 0.9
+  ) +
+  scale_y_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.35))
+  ) +
   labs(
-    title = paste("Age Demographics:", "{{town_name}}"),
     x = NULL,
     y = "Population"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 11),
-    axis.text.x = element_text(size = 10),
-    panel.grid.major.x = element_blank()
   )
 ```
 
@@ -143,41 +164,373 @@ top_5_languages <- town_lang_raw |>
   slice_head(n = 5) 
 ```
 
-In **{{town_name}}**, there are **`r scales::comma(lep_total)`** households considered to have Limited English Proficiency (LEP), representing **`r lep_percent`%** of total households. 
-
+In **{{town_name}}**, there are **`r scales::comma(lep_total)`** households considered to have Limited English Proficiency (LEP), representing **`r lep_percent`%** of total households.
 The top languages spoken at home (other than English) are:
 
 ```{r}
 #| label: table-lang-{{town_name}}
 #| echo: false
 
-# Generate a simple, clean table for the Word doc
+# Generate a simple, clean table
 top_5_languages |> 
   select(Language = variable, Estimate = estimate) |> 
-  gt() |> 
-  cols_label(
-    Language = md("**Language**"),
-    Estimate = md("**Estimated Speakers**")
-  ) |> 
-  fmt_number(
-    columns = Estimate,
-    decimals = 0,
-    use_seps = TRUE # Ensures numbers like 1200 render as 1,200
-  ) |> 
-  cols_align(
-    align = "left",
-    columns = Language
-  ) |> 
-  cols_align(
-    align = "right",
-    columns = Estimate
-  ) |> 
-  opt_stylize(style = 1, color = "gray") |> 
-  tab_options(table.align = "left")
+  knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 ```
 
 
-### Transportation Profile
+### Race & Ethnicity
+
+```{r}
+#| label: process-race-{{town_name}}
+#| include: false
+
+# 1. Race categories (total, regardless of Hispanic origin) — B02001
+race_vars <- c(
+  "White alone"                                       = "B02001_002",
+  "Black or African American alone"                   = "B02001_003",
+  "American Indian and Alaska Native alone"           = "B02001_004",
+  "Asian alone"                                       = "B02001_005",
+  "Native Hawaiian and Other Pacific Islander alone"  = "B02001_006",
+  "Some other race alone"                             = "B02001_007",
+  "Two or more races"                                 = "B02001_008"
+)
+
+# 2. Hispanic/Latino origin — B03003
+hispanic_vars <- c(
+  "Hispanic or Latino"     = "B03003_003",
+  "Not Hispanic or Latino" = "B03003_002"
+)
+
+# Total population denominator
+total_pop_var <- c("Total" = "B02001_001")
+
+town_race_raw <- get_acs(
+  geography = "county subdivision",
+  variables = race_vars,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+town_hispanic_raw <- get_acs(
+  geography = "county subdivision",
+  variables = hispanic_vars,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+town_total_pop <- get_acs(
+  geography = "county subdivision",
+  variables = total_pop_var,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}")) |>
+  pull(estimate)
+
+# Build race data frame with a group label
+town_race_clean <- town_race_raw |>
+  filter(estimate > 0) |>
+  mutate(
+    variable = recode(variable,
+      "White alone"                                       = "White",
+      "Black or African American alone"                   = "Black / African American",
+      "American Indian and Alaska Native alone"           = "American Indian / AK Native",
+      "Asian alone"                                       = "Asian",
+      "Native Hawaiian and Other Pacific Islander alone"  = "Nat Hawaiian / Pac Islander",
+      "Some other race alone"                             = "Other race",
+      "Two or more races"                                 = "Two or more races"
+    ),
+    share = round((estimate / town_total_pop) * 100, 1),
+    group = "Race"
+  )
+
+# Build Hispanic origin data frame with a group label
+town_hispanic_clean <- town_hispanic_raw |>
+  mutate(
+    variable = recode(variable,
+      "Hispanic or Latino"     = "Hispanic / Latino",
+      "Not Hispanic or Latino" = "Not Hispanic / Latino"
+    ),
+    share = round((estimate / town_total_pop) * 100, 1),
+    group = "Hispanic or Latino Origin"
+  )
+
+# Combine, preserving group order
+town_race_ethnicity <- bind_rows(town_race_clean, town_hispanic_clean) |>
+  mutate(
+    group = factor(group, levels = c("Race", "Hispanic or Latino Origin")),
+    variable = reorder(variable, share)
+  )
+```
+
+```{r}
+#| label: prose-race-{{town_name}}
+#| include: false
+
+# Largest racial group
+modal_race <- town_race_clean |>
+  slice_max(estimate, n = 1, with_ties = FALSE) |>
+  pull(variable)
+
+modal_race_pct <- town_race_clean |>
+  slice_max(estimate, n = 1, with_ties = FALSE) |>
+  pull(share)
+
+# Hispanic/Latino count and share
+hispanic_count <- town_hispanic_clean |>
+  filter(variable == "Hispanic / Latino") |>
+  pull(estimate)
+
+hispanic_pct <- town_hispanic_clean |>
+  filter(variable == "Hispanic / Latino") |>
+  pull(share)
+```
+
+In **{{town_name}}**, **`r modal_race`** is the largest racial group at **`r modal_race_pct`%** of the population. **`r scales::comma(hispanic_count)`** residents (**`r hispanic_pct`%**) identify as Hispanic or Latino, which is reported separately as it is an ethnicity rather than a racial category.
+
+```{r}
+#| label: plot-race-{{town_name}}
+#| echo: false
+
+ggplot(town_race_ethnicity, aes(x = variable, y = estimate, fill = group)) +
+  geom_col(width = 0.7) +
+  geom_text(
+    aes(label = scales::comma(estimate)),
+    hjust = -0.1,
+    size = 2.5
+  ) +
+  scale_fill_manual(
+    values = c("Race" = "#1a5276", "Hispanic or Latino Origin" = "#117a65"),
+    guide = "none"
+  ) +
+  scale_y_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.35))
+  ) +
+  coord_flip() +
+  facet_grid(group ~ ., scales = "free_y", space = "free_y") +
+  labs(x = NULL, y = "Population") +
+  theme(
+    strip.text = element_blank(),
+    strip.background = element_blank(),
+    panel.spacing = unit(0.6, "lines")
+  )
+  
+```
+
+```{=typst}
+#colbreak()
+```
+
+####
+### Income & Poverty
+```{r}
+#| label: process-income-{{town_name}}
+#| include: false
+
+# 1. Household Income (B19001)
+income_vars <- c(
+  "Less than $10,000"      = "B19001_002",
+  "$10,000 to $14,999"     = "B19001_003",
+  "$15,000 to $19,999"     = "B19001_004",
+  "$20,000 to $24,999"     = "B19001_005",
+  "$25,000 to $29,999"     = "B19001_006",
+  "$30,000 to $34,999"     = "B19001_007",
+  "$35,000 to $39,999"     = "B19001_008",
+  "$40,000 to $44,999"     = "B19001_009",
+  "$45,000 to $49,999"     = "B19001_010",
+  "$50,000 to $59,999"     = "B19001_011",
+  "$60,000 to $74,999"     = "B19001_012",
+  "$75,000 to $99,999"     = "B19001_013",
+  "$100,000 to $124,999"   = "B19001_014",
+  "$125,000 to $149,999"   = "B19001_015",
+  "$150,000 to $199,999"   = "B19001_016",
+  "$200,000 or more"       = "B19001_017"
+)
+
+income_total_var <- c("Total Households" = "B19001_001")
+
+# 2. Poverty Status (B17001)
+poverty_vars <- c(
+  "Below poverty level"    = "B17001_002",
+  "At or above poverty level" = "B17001_031"
+)
+
+poverty_total_var <- c("Total" = "B17001_001")
+
+town_income_raw <- get_acs(
+  geography = "county subdivision",
+  variables = income_vars,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+town_income_total <- get_acs(
+  geography = "county subdivision",
+  variables = income_total_var,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}")) |>
+  pull(estimate)
+
+town_poverty_raw <- get_acs(
+  geography = "county subdivision",
+  variables = poverty_vars,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}"))
+
+town_poverty_total <- get_acs(
+  geography = "county subdivision",
+  variables = poverty_total_var,
+  state = "MA",
+  year = current_acs_year,
+  survey = "acs5"
+) |>
+  filter(str_detect(NAME, "^{{town_name}}")) |>
+  pull(estimate)
+
+# Aggregate income into 5 brackets
+town_income_clean <- town_income_raw |>
+  mutate(
+    bracket = case_when(
+      variable %in% c("Less than $10,000", "$10,000 to $14,999",
+                      "$15,000 to $19,999", "$20,000 to $24,999")           ~ "Under $25k",
+      variable %in% c("$25,000 to $29,999", "$30,000 to $34,999",
+                      "$35,000 to $39,999", "$40,000 to $44,999",
+                      "$45,000 to $49,999")                                  ~ "$25k–$50k",
+      variable %in% c("$50,000 to $59,999", "$60,000 to $74,999",
+                      "$75,000 to $99,999")                                  ~ "$50k–$100k",
+      variable %in% c("$100,000 to $124,999", "$125,000 to $149,999",
+                      "$150,000 to $199,999")                                ~ "$100k–$200k",
+      variable == "$200,000 or more"                                         ~ "$200k+"
+    ),
+    bracket = factor(bracket, levels = c("Under $25k", "$25k–$50k", "$50k–$100k",
+                                          "$100k–$200k", "$200k+"))
+  ) |>
+  group_by(bracket) |>
+  summarize(
+    estimate = sum(estimate, na.rm = TRUE),
+    moe = sqrt(sum(moe^2, na.rm = TRUE))
+  ) |>
+  mutate(
+    share = round((estimate / town_income_total) * 100, 1),
+    variable = as.character(bracket),
+    group = "Household Income"
+  )
+
+# Poverty status
+town_poverty_clean <- town_poverty_raw |>
+  mutate(
+    share = round((estimate / town_poverty_total) * 100, 1),
+    group = "Poverty Status"
+  )
+
+# Combine
+town_income_poverty <- bind_rows(
+  town_income_clean |> select(variable, estimate, share, group),
+  town_poverty_clean |> select(variable, estimate, share, group)
+) |>
+  mutate(
+    group = factor(group, levels = c("Household Income", "Poverty Status")),
+    variable = factor(variable, levels = c(
+      "Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "$200k+",
+      "Below poverty level", "At or above poverty level"
+    ))
+  )
+
+
+# Pull key figures for inline text
+income_below_25k <- town_income_clean |>
+  filter(bracket == "Under $25k") |>
+  pull(estimate)
+
+income_below_25k_pct <- town_income_clean |>
+  filter(bracket == "Under $25k") |>
+  pull(share)
+
+income_top_bracket <- town_income_clean |>
+  filter(bracket == "$200k+") |>
+  pull(estimate)
+
+income_top_bracket_pct <- town_income_clean |>
+  filter(bracket == "$200k+") |>
+  pull(share)
+
+poverty_count <- town_poverty_clean |>
+  filter(variable == "Below poverty level") |>
+  pull(estimate)
+
+poverty_pct <- town_poverty_clean |>
+  filter(variable == "Below poverty level") |>
+  pull(share)
+
+# Find the modal (largest) income bracket for the narrative
+modal_bracket <- town_income_clean |>
+  slice_max(estimate, n = 1) |>
+  pull(variable)
+
+modal_bracket_pct <- town_income_clean |>
+  slice_max(estimate, n = 1) |>
+  pull(share)
+```
+
+In **{{town_name}}**, the largest share of households falls in the **`r modal_bracket`** income range, representing **`r modal_bracket_pct`%** of all households. **`r scales::comma(income_below_25k)`** households (**`r income_below_25k_pct`%**) report income under $25,000, while **`r scales::comma(income_top_bracket)`** households (**`r income_top_bracket_pct`%**) report income of $200,000 or more.
+```{r}
+#| label: plot-income-{{town_name}}
+#| echo: false
+#| fig-height: 2.5
+
+ggplot(town_income_clean, aes(x = bracket, y = estimate)) +
+  geom_col(fill = "#6c3483", width = 0.7) +
+  geom_text(
+    aes(label = paste0(scales::comma(estimate), "\n(", share, "%)")),
+    hjust = -0.1,
+    size = 2.2,
+    lineheight = 0.9
+  ) +
+  scale_y_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.35))
+  ) +
+  coord_flip() +
+  labs(x = NULL, y = "Households")
+```
+
+**`r scales::comma(poverty_count)`** residents (**`r poverty_pct`%**) in **{{town_name}}** have incomes below the federal poverty level.
+```{r}
+#| label: plot-poverty-{{town_name}}
+#| echo: false
+#| fig-height: 1.5
+
+ggplot(town_poverty_clean, aes(x = variable, y = estimate)) +
+  geom_col(fill = "#b7770d", width = 0.7) +
+  geom_text(
+    aes(label = paste0(scales::comma(estimate), "\n(", share, "%)")),
+    hjust = -0.1,
+    size = 2.2,
+    lineheight = 0.9
+  ) +
+  scale_y_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.35))
+  ) +
+  coord_flip() +
+  labs(x = NULL, y = "Population")
+```
+
+### Transportation to Work and Vehicles Available
 
 ```{r}
 #| label: process-transportation-{{town_name}}
@@ -247,25 +600,21 @@ In **{{town_name}}**, there are **`r scales::comma(zero_veh_total)`** households
 ```{r}
 #| label: plot-transpo-{{town_name}}
 #| echo: false
-#| fig-width: 6
-#| fig-height: 3.5
 
 ggplot(town_transpo_clean, aes(x = estimate, y = variable)) +
   geom_col(fill = "#d35400", width = 0.7) +
-  geom_text(aes(label = scales::comma(estimate)), hjust = -0.1, size = 3.5) +
+  geom_text(aes(label = scales::comma(estimate)), hjust = -0.1, size = 2.5) +
   scale_x_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.2))) +
   labs(
-    title = paste("Commuting Patterns:", "{{town_name}}"),
     x = "Number of Workers",
     y = NULL
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold", size = 11),
-    panel.grid.major.y = element_blank()
   )
 ```
 
-```{=openxml}
-<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+```{=typst}
+]
+```
+
+```{=typst}
+#pagebreak()
 ```

@@ -1,15 +1,26 @@
 ---
 title: "Town Profiles"
 format: 
-  docx:
+  typst:
     toc: false
     fig-dpi: 300
+    margin:
+      x: 0.5in
+      y: 0.5in
+    mainfont: "Calibri"
+    fontsize: 10pt
+
+knitr:
+  opts_chunk:
+    fig-width: 3.6
+    fig-height: 2.5   # adjust to taste
+    out-width: "100%"
 ---
 
 *Data Source: American Community Survey (ACS) 5-Year Estimates*
 
-```{=openxml}
-<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+```{=typst}
+#pagebreak()
 ```
 
 ```{r}
@@ -21,7 +32,14 @@ library(tidyverse)
 library(tidycensus)
 library(knitr)
 library(jsonlite)
-library(gt)
+
+theme_set(
+  theme_minimal(base_size = 9) +   # 9pt fits well at 3.6in column width
+  theme(
+    plot.title = element_text(face = "bold"),
+    panel.grid.major.x = element_blank()
+  )
+)
 
 get_latest_acs5_year <- function() {
   api_catalog <- fromJSON("https://api.census.gov/data.json")$dataset
@@ -37,6 +55,7 @@ get_latest_acs5_year <- function() {
 current_acs_year <- get_latest_acs5_year()
 
 ```
+
 
 ```{r}
 #| label: generate-reports
