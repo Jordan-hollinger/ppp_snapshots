@@ -1,5 +1,5 @@
 ---
-title: "Town Profiles"
+title: ""
 format: 
   typst:
     toc: false
@@ -8,6 +8,7 @@ format:
       x: 0.5in
       y: 0.5in
     mainfont: "Calibri"
+    sansfont: "Calibri"
     fontsize: 10pt
 
 knitr:
@@ -17,12 +18,13 @@ knitr:
     out-width: "100%"
 ---
 
-*Data Source: American Community Survey (ACS) 5-Year Estimates*
+# Town Profiles
+
+*Data Source: American Community Survey (ACS) 2024 5-Year Estimates*
 
 ```{=typst}
 #pagebreak()
 ```
-
 ```{r}
 #| label: setup
 #| include: false
@@ -56,7 +58,6 @@ current_acs_year <- get_latest_acs5_year()
 
 ```
 
-
 ```{r}
 #| label: generate-reports
 #| output: asis
@@ -76,8 +77,3 @@ res <- knitr::knit_child(text = unlist(src), quiet = TRUE)
 # 3. 'cat' prints the raw markdown (and plot links) directly into the final document
 cat(res, sep = '\n')
 ```
-
-
-
-
-
