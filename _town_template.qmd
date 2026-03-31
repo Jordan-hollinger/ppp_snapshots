@@ -84,7 +84,7 @@ In **{{town_name}}**, youth under 20 make up **`r youth_pct`%** of the populatio
 #| fig-height: 1.5
 
 ggplot(town_age_summary, aes(x = Bracket, y = Estimate)) +
-  geom_col(fill = "#2c3e50", width = 0.7) +
+  geom_col(fill = "#A00D03", width = 0.7) +
   geom_text(
     aes(label = paste0(scales::comma(Estimate), "\n(", Share, "%)")),
     vjust = -0.3,
@@ -305,7 +305,7 @@ ggplot(town_race_ethnicity, aes(x = variable, y = estimate, fill = group)) +
     size = 2.5
   ) +
   scale_fill_manual(
-    values = c("Race" = "#1a5276", "Hispanic or Latino Origin" = "#117a65"),
+    values = c("Race" = "#A00D03", "Hispanic or Latino Origin" = "#0395A0"),
     guide = "none"
   ) +
   scale_y_continuous(
@@ -493,7 +493,7 @@ In **{{town_name}}**, the largest share of households falls in the **`r modal_br
 #| fig-height: 2.5
 
 ggplot(town_income_clean, aes(x = bracket, y = estimate)) +
-  geom_col(fill = "#6c3483", width = 0.7) +
+  geom_col(fill = "#0395A0", width = 0.7) +
   geom_text(
     aes(label = paste0(scales::comma(estimate), "\n(", share, "%)")),
     hjust = -0.1,
@@ -515,7 +515,7 @@ ggplot(town_income_clean, aes(x = bracket, y = estimate)) +
 #| fig-height: 1.5
 
 ggplot(town_poverty_clean, aes(x = variable, y = estimate)) +
-  geom_col(fill = "#b7770d", width = 0.7) +
+  geom_col(fill = "#A00D03", width = 0.7) +
   geom_text(
     aes(label = paste0(scales::comma(estimate), "\n(", share, "%)")),
     hjust = -0.1,
@@ -602,7 +602,7 @@ In **{{town_name}}**, there are **`r scales::comma(zero_veh_total)`** households
 #| echo: false
 
 ggplot(town_transpo_clean, aes(x = estimate, y = variable)) +
-  geom_col(fill = "#d35400", width = 0.7) +
+  geom_col(fill = "#0395A0", width = 0.7) +
   geom_text(aes(label = scales::comma(estimate)), hjust = -0.1, size = 2.5) +
   scale_x_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.2))) +
   labs(

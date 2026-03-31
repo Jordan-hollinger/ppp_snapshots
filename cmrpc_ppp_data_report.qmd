@@ -1,8 +1,10 @@
 ---
-title: ""
+title: "Town Profiles"
+subtitle: "Data Source: American Community Survey (ACS) 2024 5-Year Estimates"
 format: 
   typst:
-    toc: false
+    toc: TRUE
+    toc-depth: 1
     fig-dpi: 300
     margin:
       x: 0.5in
@@ -10,6 +12,10 @@ format:
     mainfont: "Calibri"
     sansfont: "Calibri"
     fontsize: 10pt
+    brand:
+      typography:
+        headings:
+          family: "Calibri"
 
 knitr:
   opts_chunk:
@@ -18,9 +24,6 @@ knitr:
     out-width: "100%"
 ---
 
-# Town Profiles
-
-*Data Source: American Community Survey (ACS) 2024 5-Year Estimates*
 
 ```{=typst}
 #pagebreak()
@@ -64,7 +67,12 @@ current_acs_year <- get_latest_acs5_year()
 #| echo: false
 
 # Define your test towns
-towns <- c("Barre", "Worcester") 
+towns <- c("Auburn", "Barre", "Berlin", "Blackstone", "Boylston", "Brookfield", "Charlton",
+  "Douglas", "Dudley", "East Brookfield", "Grafton", "Hardwick", "Holden", "Hopedale",
+  "Leicester", "Mendon", "Millbury", "Millville", "New Braintree", "North Brookfield",
+  "Northborough", "Northbridge", "Oakham", "Oxford", "Paxton", "Princeton", "Rutland",
+  "Shrewsbury", "Southbridge", "Spencer", "Sturbridge", "Sutton", "Upton", "Uxbridge",
+  "Warren", "Webster", "West Boylston", "West Brookfield", "Westborough", "Worcester") 
 
 # 1. Expand the template to fill in the {{town_name}} for each town
 src <- lapply(towns, function(current_town) {
