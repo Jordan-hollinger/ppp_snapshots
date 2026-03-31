@@ -3,7 +3,6 @@
 ```{=typst}
 #columns(2, gutter: 4%)[
 ```
-
 ```{r}
 #| label: process-age-{{town_name}}
 #| include: false
@@ -57,6 +56,7 @@ town_age_summary <- town_age_raw |>
     Share = round((Estimate / sum(Estimate)) * 100, 1)
   )
 ```
+
 ```{r}
 #| label: prose-age-{{town_name}}
 #| include: false
@@ -74,10 +74,12 @@ older_adult_pct <- town_age_summary |>
   pull(Share)
 ```
 
-####
+#### 
+
 ### Age Distribution
 
 In **{{town_name}}**, youth under 20 make up **`r youth_pct`%** of the population, while **`r scales::comma(older_adult_count)`** residents (**`r older_adult_pct`%**) are aged 65 or older.
+
 ```{r}
 #| label: plot-age-{{town_name}}
 #| echo: false
@@ -165,8 +167,7 @@ top_5_languages <- town_lang_raw |>
   slice_head(n = 5) 
 ```
 
-In **{{town_name}}**, there are **`r scales::comma(lep_total)`** households considered to have Limited English Proficiency (LEP), representing **`r lep_percent`%** of total households.
-The top languages spoken at home (other than English) are:
+In **{{town_name}}**, there are **`r scales::comma(lep_total)`** households considered to have Limited English Proficiency (LEP), representing **`r lep_percent`%** of total households. The top languages spoken at home for the population 5 years and over (other than English) are:
 
 ```{r}
 #| label: table-lang-{{town_name}}
@@ -178,6 +179,7 @@ top_5_languages |>
   knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 ```
 
+*ACS Tables: C16001 & S1602*
 
 ### Race & Ethnicity
 
@@ -327,9 +329,10 @@ ggplot(town_race_ethnicity, aes(x = variable, y = estimate, fill = group)) +
 ```{=typst}
 #colbreak()
 ```
+#### 
 
-####
 ### Income & Poverty
+
 ```{r}
 #| label: process-income-{{town_name}}
 #| include: false
@@ -487,7 +490,8 @@ modal_bracket_pct <- town_income_clean |>
   pull(share)
 ```
 
-In **{{town_name}}**, the largest share of households falls in the **`r modal_bracket`** income range, representing **`r modal_bracket_pct`%** of all households. **`r scales::comma(income_below_25k)`** households (**`r income_below_25k_pct`%**) report income under $25,000, while **`r scales::comma(income_top_bracket)`** households (**`r income_top_bracket_pct`%**) report income of $200,000 or more.
+In **{{town_name}}**, the largest share of households falls in the **`r modal_bracket`** income range, representing **`r modal_bracket_pct`%** of all households. **`r scales::comma(income_below_25k)`** households (**`r income_below_25k_pct`%**) report income under \$25,000, while **`r scales::comma(income_top_bracket)`** households (**`r income_top_bracket_pct`%**) report income of \$200,000 or more.
+
 ```{r}
 #| label: plot-income-{{town_name}}
 #| echo: false
@@ -510,6 +514,7 @@ ggplot(town_income_clean, aes(x = bracket, y = estimate)) +
 ```
 
 **`r scales::comma(poverty_count)`** residents (**`r poverty_pct`%**) in **{{town_name}}** have incomes below the federal poverty level.
+
 ```{r}
 #| label: plot-poverty-{{town_name}}
 #| echo: false
@@ -616,7 +621,6 @@ ggplot(town_transpo_clean, aes(x = estimate, y = variable)) +
 ```{=typst}
 ]
 ```
-
 ```{=typst}
 #pagebreak()
 ```
