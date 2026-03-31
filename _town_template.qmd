@@ -97,7 +97,8 @@ ggplot(town_age_summary, aes(x = Bracket, y = Estimate)) +
   ) +
   labs(
     x = NULL,
-    y = "Population"
+    y = "Population",
+    caption = "ACS Table: S0101"
   )
 ```
 
@@ -314,7 +315,7 @@ ggplot(town_race_ethnicity, aes(x = variable, y = estimate, fill = group)) +
   ) +
   coord_flip() +
   facet_grid(group ~ ., scales = "free_y", space = "free_y") +
-  labs(x = NULL, y = "Population") +
+  labs(x = NULL, y = "Population", caption = "ACS Tables: B02001 & B03003") +
   theme(
     strip.text = element_blank(),
     strip.background = element_blank(),
@@ -505,7 +506,7 @@ ggplot(town_income_clean, aes(x = bracket, y = estimate)) +
     expand = expansion(mult = c(0, 0.35))
   ) +
   coord_flip() +
-  labs(x = NULL, y = "Households")
+  labs(x = NULL, y = "Households", caption = "ACS Table: B19001")
 ```
 
 **`r scales::comma(poverty_count)`** residents (**`r poverty_pct`%**) in **{{town_name}}** have incomes below the federal poverty level.
@@ -527,7 +528,7 @@ ggplot(town_poverty_clean, aes(x = variable, y = estimate)) +
     expand = expansion(mult = c(0, 0.35))
   ) +
   coord_flip() +
-  labs(x = NULL, y = "Population")
+  labs(x = NULL, y = "Population", caption = "ACS Table: B17001")
 ```
 
 ### Transportation to Work and Vehicles Available
@@ -607,7 +608,8 @@ ggplot(town_transpo_clean, aes(x = estimate, y = variable)) +
   scale_x_continuous(labels = scales::comma, expand = expansion(mult = c(0, 0.2))) +
   labs(
     x = "Number of Workers",
-    y = NULL
+    y = NULL,
+    caption = "ACS Table: B08301"
   )
 ```
 

@@ -1,6 +1,7 @@
 ---
 title: "Town Profiles"
 subtitle: "Data Source: American Community Survey (ACS) 2024 5-Year Estimates"
+
 format: 
   typst:
     toc: TRUE
@@ -9,13 +10,7 @@ format:
     margin:
       x: 0.5in
       y: 0.5in
-    mainfont: "Calibri"
-    sansfont: "Calibri"
     fontsize: 10pt
-    brand:
-      typography:
-        headings:
-          family: "Calibri"
 
 knitr:
   opts_chunk:
@@ -23,7 +18,6 @@ knitr:
     fig-height: 2.5   # adjust to taste
     out-width: "100%"
 ---
-
 
 ```{=typst}
 #pagebreak()
